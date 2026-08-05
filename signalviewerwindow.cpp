@@ -4,9 +4,12 @@
 #include "mainwindow.h"
 #include "utility.h"
 #include <QDebug>
+#include <algorithm>
 
+#define NODE_COL    0
 #define MSG_COL     1
-#define VALUE_COL   2
+#define SIGNAL_COL  2
+#define VALUE_COL   3
 
 SignalViewerWindow::SignalViewerWindow(const QVector<CANFrame> *frames, QWidget *parent) :
     QDialog(parent),
@@ -17,11 +20,14 @@ SignalViewerWindow::SignalViewerWindow(const QVector<CANFrame> *frames, QWidget 
 
     modelFrames = frames;
 
+    ui->tableViewer->setColumnCount(4);
     QStringList headers;
-    headers << "Node" << "Signal" << "Value";
+    headers << "Node" << "Message" << "Signal" << "Value";
     ui->tableViewer->setHorizontalHeaderLabels(headers);
     ui->tableViewer->setColumnWidth(0, 100);
     ui->tableViewer->setColumnWidth(1, 150);
+    ui->tableViewer->setColumnWidth(2, 150);
+    ui->tableViewer->setSortingEnabled(false);
 
     QSettings settings;
     QFont sysFont;
@@ -120,25 +126,43 @@ void SignalViewerWindow::removeSelectedSignal()
     ui->signalTree->uncheckSignal(sig);
 }
 
+bool compareSignals(DBC_SIGNAL *s1, DBC_SIGNAL *s2) {
+    if (s1->parentMessage->sender->name != s2->parentMessage->sender->name)
+        return s1->parentMessage->sender->name < s2->parentMessage->sender->name;
+    if (s1->parentMessage->name != s2->parentMessage->name)
+        return s1->parentMessage->name < s2->parentMessage->name;
+    return s1->name < s2->name;
+}
+
+void SignalViewerWindow::populateTable()
+{
+    ui->tableViewer->setRowCount(0);
+    std::sort(signalList.begin(), signalList.end(), compareSignals);
+    
+    for (int i = 0; i < signalList.count(); i++) {
+        DBC_SIGNAL *sig = signalList.at(i);
+        ui->tableViewer->insertRow(i);
+        ui->tableViewer->setItem(i, NODE_COL, new QTableWidgetItem(sig->parentMessage->sender->name));
+        ui->tableViewer->setItem(i, MSG_COL, new QTableWidgetItem(sig->parentMessage->name));
+        ui->tableViewer->setItem(i, SIGNAL_COL, new QTableWidgetItem(sig->name));
+    }
+}
+
 void SignalViewerWindow::removeSignal(DBC_SIGNAL *sig)
 {
     int idx = signalList.indexOf(sig);
     if (idx >= 0) {
         signalList.removeAt(idx);
-        ui->tableViewer->removeRow(idx);
+        populateTable();
     }
 }
 
 void SignalViewerWindow::addSignal(DBC_SIGNAL *sig)
 {
-    signalList.append(sig);
-
-    int rowIdx = ui->tableViewer->rowCount();
-    ui->tableViewer->insertRow(rowIdx);
-    QTableWidgetItem *nodeitem = new QTableWidgetItem(sig->parentMessage->sender->name);
-    ui->tableViewer->setItem(rowIdx, 0, nodeitem);
-    QTableWidgetItem *msgitem = new QTableWidgetItem(sig->name);
-    ui->tableViewer->setItem(rowIdx, 1, msgitem);
+    if (!signalList.contains(sig)) {
+        signalList.append(sig);
+        populateTable();
+    }
 }
 
 void SignalViewerWindow::saveSignalsFile()

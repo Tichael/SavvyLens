@@ -1280,7 +1280,7 @@ void MainWindow::handleLoadFile()
         if (ui->cbAutoScroll->isChecked()) ui->canFramesView->scrollToBottom();
 
         updateFileStatus();
-        emit framesUpdated(-1);
+        emit framesUpdated(-2);
     }
 }
 
@@ -1334,7 +1334,7 @@ void MainWindow::handleDroppedFile(const QString &filename)
         if (ui->cbAutoScroll->isChecked()) ui->canFramesView->scrollToBottom();
 
         updateFileStatus();
-        emit framesUpdated(-1);
+        emit framesUpdated(-2);
     }
 }
 

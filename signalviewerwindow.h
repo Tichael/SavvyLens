@@ -41,6 +41,7 @@ private:
     const QVector<CANFrame> *modelFrames;
 
     void processFrame(CANFrame &frame);
+    void populateTable();
 };
 
 #endif // SIGNALVIEWERWINDOW_H
